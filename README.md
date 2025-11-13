@@ -34,7 +34,7 @@ The plugin employs an aggressive **entity cleanup** strategy at the start of eve
 <img width="320" height="auto" alt="JUNK1" src="https://smoothwizard.com/wp-content/uploads/2025/10/MedalTVCounterStrike220251027204023-768x432.png" />
 
 ### Installation Steps
-1.  Download the latest version of the plugin (`SmoothWizardOptimizer.dll`) from the Releases section.
+1.  Download the latest version of the plugin (`SmoothWizardOptimizer.dll`) from the [Releases](https://github.com/skullboypl/CS2-FPS-optimizer-plugin-for-server-by-SmoothWizard/releases) section.
 2.  Create a folder named `SmoothWizardOptimizer` inside your CSSHarp plugins directory:
     ```
     /game/csgo/addons/counterstrikesharp/plugins/SmoothWizardOptimizer/
