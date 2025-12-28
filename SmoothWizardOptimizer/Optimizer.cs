@@ -14,12 +14,11 @@ namespace SmoothWizardOptimizer
     public class SmoothWizardOptimizer : BasePlugin
     {
         public override string ModuleName => "SmoothWizard Server Optimizer";
-        public override string ModuleVersion => "1.0.2";
+        public override string ModuleVersion => "1.0.3";
         public override string ModuleAuthor => "SkullMedia & Optimized";
 
         private bool isOptimizationEnabled = true;
 
-        [cite_start]// 官方原始檔的清理清單 
         private readonly string[] entitiesToCleanup =
         {
            "cs_ragdoll", "env_explosion", "env_fire", "env_spark", "env_smokestack",
@@ -34,8 +33,7 @@ namespace SmoothWizardOptimizer
                 return HookResult.Continue;
             });
 
-            AddCommand("css_sw_toggle", "切換優化器狀態", OnToggleOptimizerCommand);
-
+            AddCommand("css_sw_toggle", "Toggle Optimizer", OnToggleOptimizerCommand);
             Server.PrintToConsole($"[SmoothWizard] Plugin Loaded. Status: {isOptimizationEnabled}");
         }
 
@@ -43,10 +41,10 @@ namespace SmoothWizardOptimizer
         {
             isOptimizationEnabled = !isOptimizationEnabled;
             
-            [cite_start]// 讀取語系檔中的開啟/關閉文字 
+            // 讀取語系檔中的開啟/關閉狀態
             string status = isOptimizationEnabled ? Localizer["fps.enabled"] : Localizer["fps.disabled"];
             
-            // 組合訊息並發送到聊天室
+            // 輸出彩色訊息到聊天室
             player?.PrintToChat($" {ChatColors.Red}[SmoothWizard]{ChatColors.White} 優化器已 {status}");
         }
 
@@ -59,7 +57,6 @@ namespace SmoothWizardOptimizer
             {
                 var entities = Utilities.FindAllEntitiesByDesignerName<CEntityInstance>(pattern).ToList();
 
-                [cite_start]// 官方原始檔的分批處理邏輯 (Chunk 50) 
                 foreach (var batch in entities.Chunk(50))
                 {
                     totalBatches++;
@@ -69,7 +66,6 @@ namespace SmoothWizardOptimizer
                         {
                             if (ent == null || !ent.IsValid) continue;
 
-                            [cite_start]// 官方保護邏輯：不刪除門、武器、通風口等 
                             bool isProtected = ent.DesignerName.Contains("door") || ent.DesignerName.Contains("breakable") || 
                                              ent.DesignerName.StartsWith("weapon_") || ent.DesignerName.Contains("vent");
 
@@ -81,13 +77,11 @@ namespace SmoothWizardOptimizer
                         }
 
                         totalBatches--;
-                        [cite_start]// 當所有分批處理完畢後，發送語系訊息 
                         if (totalBatches == 0 && removedTotal > 0)
                         {
-                            // 伺服器後台日誌 (對應 fps.console_log)
+                            // 伺服器後台日誌
                             Console.WriteLine(Localizer["fps.console_log", context, removedTotal]);
-                            
-                            // 全服玩家提示 (對應 fps.cleanup_done)
+                            // 全服玩家聊天室提示
                             Server.PrintToChatAll($" {ChatColors.Red}[SmoothWizard]{ChatColors.Default} " + Localizer["fps.cleanup_done", removedTotal]);
                         }
                     });
