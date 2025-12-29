@@ -40,12 +40,8 @@ namespace SmoothWizardOptimizer
         private void OnToggleOptimizerCommand(CCSPlayerController? player, CommandInfo info)
         {
             isOptimizationEnabled = !isOptimizationEnabled;
-            
-            // 讀取語系檔中的開啟/關閉狀態
             string status = isOptimizationEnabled ? Localizer["fps.enabled"] : Localizer["fps.disabled"];
-            
-            // 輸出彩色訊息到聊天室
-            player?.PrintToChat($" {ChatColors.Red}[SmoothWizard]{ChatColors.White} 優化器已 {status}");
+            player?.PrintToChat($" {ChatColors.Red}優化系統{ChatColors.White} 已 {status}");
         }
 
         private void CleanupMapAndTempEntities(string context)
@@ -79,10 +75,8 @@ namespace SmoothWizardOptimizer
                         totalBatches--;
                         if (totalBatches == 0 && removedTotal > 0)
                         {
-                            // 伺服器後台日誌
                             Console.WriteLine(Localizer["fps.console_log", context, removedTotal]);
-                            // 全服玩家聊天室提示
-                            Server.PrintToChatAll($" {ChatColors.Red}[SmoothWizard]{ChatColors.Default} " + Localizer["fps.cleanup_done", removedTotal]);
+                            Server.PrintToChatAll(Localizer["fps.cleanup_done", removedTotal]);
                         }
                     });
                 }
