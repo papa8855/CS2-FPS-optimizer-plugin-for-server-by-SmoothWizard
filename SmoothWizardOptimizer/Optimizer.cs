@@ -8,48 +8,36 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Extensions.Localization;
 
 namespace SmoothWizardOptimizer
 {
     public class SmoothWizardOptimizer : BasePlugin
     {
         public override string ModuleName => "SmoothWizard Server Optimizer";
-        public override string ModuleVersion => "1.0.1";
-        public override string ModuleAuthor => "SkullMedia Artur Spychalski";
+        public override string ModuleVersion => "1.0.6";
+        public override string ModuleAuthor => "SkullMedia & Optimized";
 
         private bool isOptimizationEnabled = true;
 
         private readonly string[] entitiesToCleanup =
         {
-           "cs_ragdoll",
-           "env_explosion",
-           "env_fire",
-           "env_spark",
-           "env_smokestack",
-           "info_particle_system",
-           "particle_*",
-           "decals_*",
-           "prop_physics_multiplayer",
-           "prop_physics",
+           "cs_ragdoll", "env_explosion", "env_fire", "env_spark", "env_smokestack",
+           "info_particle_system", "particle_*", "decals_*", "prop_physics_multiplayer", "prop_physics"
         };
 
         private readonly bool debugMode = false;
         private bool clearLoopActive = false;
-        private readonly HashSet<uint> removedDebugEntityIds = new();
-
         private CounterStrikeSharp.API.Modules.Timers.Timer? debugTimer = null;
-
         private Queue<CEntityInstance> entitiesToClearQueue = new Queue<CEntityInstance>();
 
         public override void Load(bool hotReload)
         {
             RegisterEventHandler<EventRoundStart>(OnRoundStart);
-            AddCommand("css_sw_toggle", "Toggles the SmoothWizard server optimization cleanup on/off.", OnToggleOptimizerCommand);
-            AddCommand("css_sw_clear", "Starts the entity removal loop from the list. DEBUG", OnClearEntitiesLoopCommand);
-            AddCommand("css_sw_stop", "Stops the entity removal loop. DEBUG", OnStopClearLoopCommand);
+            AddCommand("css_sw_toggle", "切換優化系統開關", OnToggleOptimizerCommand);
+            AddCommand("css_sw_clear", "開始清理偵錯循環", OnClearEntitiesLoopCommand);
+            AddCommand("css_sw_stop", "停止清理偵錯循環", OnStopClearLoopCommand);
 
-            Server.PrintToConsole($"[SmoothWizard Server Optimizer] Loaded successfully (v{ModuleVersion}). Optimization: {(isOptimizationEnabled ? "ON" : "OFF")}.");
+            Server.PrintToConsole($"[SmoothWizard] 插件已載入。目前狀態: {(isOptimizationEnabled ? "開啟" : "關閉")}");
         }
 
         public override void Unload(bool hotReload)
@@ -69,8 +57,9 @@ namespace SmoothWizardOptimizer
         private void OnToggleOptimizerCommand(CCSPlayerController? player, CommandInfo info)
         {
             isOptimizationEnabled = !isOptimizationEnabled;
-            string status = isOptimizationEnabled ? Localizer["fps.enabled"] : Localizer["fps.disabled"];
-            player?.PrintToChat($" {ChatColors.Red}優化系統{ChatColors.White} 已 {status}");
+            string status = isOptimizationEnabled ? $"{ChatColors.Green}開啟" : $"{ChatColors.Red}關閉";
+            string chatMessage = $" {ChatColors.Red}優化系統{ChatColors.White} 已 {status}";
+            info.ReplyToCommand(chatMessage);
         }
 
         private void OnStopClearLoopCommand(CCSPlayerController? player, CommandInfo info)
@@ -79,15 +68,14 @@ namespace SmoothWizardOptimizer
             debugTimer?.Kill();
             debugTimer = null;
             entitiesToClearQueue.Clear();
-            info.ReplyToCommand("Stopped entity removal debug loop (css_sw_dclear).");
-            Server.PrintToConsole("[SW DEBUG] Stopped entity removal loop.");
+            info.ReplyToCommand("已停止實體清理偵錯循環。");
         }
 
         private void OnClearEntitiesLoopCommand(CCSPlayerController? player, CommandInfo info)
         {
             if (clearLoopActive)
             {
-                info.ReplyToCommand("The loop is already running. Use css_sw_dstop to stop.");
+                info.ReplyToCommand("循環已經在運行中。");
                 return;
             }
 
@@ -107,13 +95,12 @@ namespace SmoothWizardOptimizer
 
             if (entitiesToClearQueue.Count == 0)
             {
-                info.ReplyToCommand("No entities found for removal in the debug loop list.");
+                info.ReplyToCommand("未發現可清理的實體。");
                 return;
             }
 
             clearLoopActive = true;
-            info.ReplyToCommand($"[{ChatColors.Red}SmoothWizard{ChatColors.White}]Started removing {entitiesToClearQueue.Count} entities. Use css_sw_dstop to stop.");
-
+            info.ReplyToCommand($" {ChatColors.Red}SmoothWizard{ChatColors.White} 開始清理 {entitiesToClearQueue.Count} 個實體。");
             debugTimer = AddTimer(0.01f, ClearEntitiesLoop, TimerFlags.REPEAT);
         }
 
@@ -125,29 +112,17 @@ namespace SmoothWizardOptimizer
                 debugTimer?.Kill();
                 debugTimer = null;
                 entitiesToClearQueue.Clear();
-                Server.PrintToChatAll($"[{ChatColors.Red}SmoothWizard{ChatColors.White}] Entity removal loop finished.");
+                Server.PrintToChatAll($" {ChatColors.Red}SmoothWizard{ChatColors.White} 實體清理循環結束。");
                 return;
             }
 
             var ent = entitiesToClearQueue.Dequeue();
-
-            if (ent == null || !ent.IsValid)
-            {
-                return;
-            }
+            if (ent == null || !ent.IsValid) return;
 
             Server.NextFrame(() =>
             {
-                try
-                {
-                    string details = $"{ent.DesignerName} [ID: {ent.Index}]";
-                    ent.Remove();
-                    removedDebugEntityIds.Add(ent.Index);
-                }
-                catch (Exception ex)
-                {
-                    Server.PrintToConsole($"[SW DEBUG ERROR] Error removing {ent.DesignerName} [ID: {ent.Index}]: {ex.Message}");
-                }
+                try { ent.Remove(); }
+                catch (Exception) { }
             });
         }
 
@@ -155,52 +130,54 @@ namespace SmoothWizardOptimizer
         {
             int removedTotal = 0;
             int totalBatches = 0;
+            List<CEntityInstance> allPending = new List<CEntityInstance>();
 
             foreach (var pattern in entitiesToCleanup)
             {
-                var entities = Utilities.FindAllEntitiesByDesignerName<CEntityInstance>(pattern).ToList();
+                var found = Utilities.FindAllEntitiesByDesignerName<CEntityInstance>(pattern);
+                if (found != null) allPending.AddRange(found);
+            }
 
-                foreach (var batch in entities.Chunk(50))
+            if (allPending.Count == 0) return;
+
+            var chunks = allPending.Chunk(50).ToList();
+            totalBatches = chunks.Count;
+
+            foreach (var batch in chunks)
+            {
+                Server.NextFrame(() =>
                 {
-                    totalBatches++;
-
-                    Server.NextFrame(() =>
+                    foreach (var ent in batch)
                     {
-                        foreach (var ent in batch)
+                        try
                         {
-                            try
-                            {
-                                if (ent == null || !ent.IsValid)
-                                    continue;
+                            if (ent == null || !ent.IsValid) continue;
 
-                                bool isProtected = ent.DesignerName.Contains("door") || ent.DesignerName.Contains("breakable") || ent.DesignerName.StartsWith("weapon_") ||
-                                                     ent.DesignerName.Contains("vent") || ent.DesignerName.Contains("shield") || ent.DesignerName.Contains("movable_platform") ||
-                                                     ent.DesignerName.Contains("parent");
+                            bool isProtected = ent.DesignerName.Contains("door") || ent.DesignerName.Contains("breakable") || 
+                                             ent.DesignerName.StartsWith("weapon_") || ent.DesignerName.Contains("vent") ||
+                                             ent.DesignerName.Contains("shield") || ent.DesignerName.Contains("movable_platform") || 
+                                             ent.DesignerName.Contains("parent");
 
-                                if (!isProtected)
-                                {
-                                    ent.Remove();
-                                    removedTotal++;
-                                }
-                            }
-                            catch (Exception ex)
+                            if (!isProtected)
                             {
-                                Server.PrintToConsole($"[SmoothWizard] Warning: failed to process {ent?.DesignerName ?? "unknown"} - {ex.Message}");
+                                ent.Remove();
+                                removedTotal++;
                             }
                         }
-
-                        totalBatches--;
-
-                        if (totalBatches == 0)
+                        catch (Exception ex)
                         {
-                            if (removedTotal > 0)
-                            {
-                                Console.WriteLine(Localizer["fps.console_log", context, removedTotal]);
-                                Server.PrintToChatAll(Localizer["fps.cleanup_done", removedTotal]);
-                            }
+                            Server.PrintToConsole($"[SmoothWizard] 錯誤: {ex.Message}");
                         }
-                    });
-                }
+                    }
+
+                    totalBatches--;
+
+                    if (totalBatches == 0 && removedTotal > 0)
+                    {
+                        Console.WriteLine($"[系統優化] [{context}] 任務執行完畢。總共清理實體：{removedTotal}");
+                        Server.PrintToChatAll($" {ChatColors.Green}[ 優化系統 ]{ChatColors.White} 任務執行完畢，總共清理實體：{ChatColors.LightRed}{removedTotal}{ChatColors.White}。");
+                    }
+                });
             }
         }
     }
