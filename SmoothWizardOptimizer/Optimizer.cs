@@ -14,7 +14,7 @@ namespace SmoothWizardOptimizer
     public class SmoothWizardOptimizer : BasePlugin
     {
         public override string ModuleName => "SmoothWizard Server Optimizer";
-        public override string ModuleVersion => "1.0.6";
+        public override string ModuleVersion => "1.0.7";
         public override string ModuleAuthor => "SkullMedia & Optimized";
 
         private bool isOptimizationEnabled = true;
@@ -132,6 +132,7 @@ namespace SmoothWizardOptimizer
             int totalBatches = 0;
             List<CEntityInstance> allPending = new List<CEntityInstance>();
 
+            // 修正點：先將所有符合條件的實體彙整，不分開處理
             foreach (var pattern in entitiesToCleanup)
             {
                 var found = Utilities.FindAllEntitiesByDesignerName<CEntityInstance>(pattern);
@@ -140,6 +141,7 @@ namespace SmoothWizardOptimizer
 
             if (allPending.Count == 0) return;
 
+            // 修正點：針對總清單進行分批，確保 totalBatches 只會歸零一次
             var chunks = allPending.Chunk(50).ToList();
             totalBatches = chunks.Count;
 
@@ -172,6 +174,7 @@ namespace SmoothWizardOptimizer
 
                     totalBatches--;
 
+                    // 只有當所有批次都處理完畢時才輸出結算訊息
                     if (totalBatches == 0 && removedTotal > 0)
                     {
                         Console.WriteLine($"[系統優化] [{context}] 任務執行完畢。總共清理實體：{removedTotal}");
