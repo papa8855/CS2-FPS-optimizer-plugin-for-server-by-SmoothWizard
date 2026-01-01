@@ -93,7 +93,7 @@ namespace SmoothWizardOptimizer
                     if (totalBatches == 0 && removedTotal > 0)
                     {
                         Console.WriteLine($"[系統優化] [{context}] 任務執行完畢。總共清理實體：{removedTotal}");
-                        Server.PrintToChatAll($" [{ChatColors.Green}優化系統{ChatColors.White}] 任務執行完畢，總共清理實體：{ChatColors.LightRed}{removedTotal}{ChatColors.White}。");
+                        Server.PrintToChatAll($" [{ChatColors.Green}系統優化{ChatColors.White}] 任務執行完畢，總共清理實體：{ChatColors.LightRed}{removedTotal}{ChatColors.White}。");
                     }
                 });
             }
